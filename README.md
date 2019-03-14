@@ -1,0 +1,3 @@
+# Betting smart contract on Ethereum blockchain
+
+more to come...
