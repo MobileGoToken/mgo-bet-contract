@@ -1,7 +1,7 @@
 pragma solidity 0.5.0;
 
 contract Bet {
-	//jedi bet status
+	//bet status
 	uint constant STATUS_WIN = 1;
 	uint constant STATUS_LOSE = 2;
 	uint constant STATUS_TIE = 3;
@@ -16,7 +16,7 @@ contract Bet {
 	uint constant STATUS_ERROR = 4;
 
 	//the 'better' structure
-	struct JediBet {
+	struct Bet {
 		uint guess;
 		address payable addr;
 		uint status;
@@ -27,102 +27,102 @@ contract Bet {
 		uint256 betAmount;
 		uint outcome;
 		uint status;
-		JediBet originator;
-		JediBet taker;
+		Bet originator;
+		Bet taker;
 	}
 
 	//the game
 	Game game;
 
-//fallback function
-function() external payable {}
+	//fallback function
+	function() external payable {}
 
-function createBet(uint _guess) public payable {
-	game = Game(msg.value, 0, STATUS_STARTED, JediBet(_guess, msg.sender, STATUS_PENDING), JediBet(0, address(0), STATUS_NOT_STARTED));
-	game.originator = JediBet(_guess, msg.sender, STATUS_PENDING);
-}
-
-function takeBet(uint _guess) public payable { 
-	//requires the taker to make the same bet amount     
-	require(msg.value == game.betAmount);
-	game.taker = JediBet(_guess, msg.sender, STATUS_PENDING);
-	generateBetOutcome();
-}
-
-function payout() public payable {
-
-	checkPermissions(msg.sender);
-	
-	if (game.originator.status == STATUS_TIE && game.taker.status == STATUS_TIE) {
-	game.originator.addr.transfer(game.betAmount);
-	game.taker.addr.transfer(game.betAmount);
-	} else {
-	if (game.originator.status == STATUS_WIN) {
-		game.originator.addr.transfer(game.betAmount*2);
-	} else if (game.taker.status == STATUS_WIN) {
-		game.taker.addr.transfer(game.betAmount*2);
-	} else {
-		game.originator.addr.transfer(game.betAmount);
-		game.taker.addr.transfer(game.betAmount);
+	function createBet(uint _guess) public payable {
+		game = Game(msg.value, 0, STATUS_STARTED, Bet(_guess, msg.sender, STATUS_PENDING), Bet(0, address(0), STATUS_NOT_STARTED));
+		game.originator = Bet(_guess, msg.sender, STATUS_PENDING);
 	}
+
+	function takeBet(uint _guess) public payable {
+		//requires the taker to make the same bet amount
+		require(msg.value == game.betAmount);
+		game.taker = Bet(_guess, msg.sender, STATUS_PENDING);
+		generateBetOutcome();
 	}
-}
 
-function checkPermissions(address sender) view private {
-	//only the originator or taker can call this function
-	require(sender == game.originator.addr || sender == game.taker.addr);  
-}
+	function payout() public payable {
 
-function getBetAmount() public view returns (uint) {
-	checkPermissions(msg.sender);
-	return game.betAmount;
-}
+		checkPermissions(msg.sender);
+		
+		if (game.originator.status == STATUS_TIE && game.taker.status == STATUS_TIE) {
+			game.originator.addr.transfer(game.betAmount);
+			game.taker.addr.transfer(game.betAmount);
+		} else {
+			if (game.originator.status == STATUS_WIN) {
+				game.originator.addr.transfer(game.betAmount*2);
+			} else if (game.taker.status == STATUS_WIN) {
+				game.taker.addr.transfer(game.betAmount*2);
+			} else {
+				game.originator.addr.transfer(game.betAmount);
+				game.taker.addr.transfer(game.betAmount);
+			}
+		}
+	}
+
+	function checkPermissions(address sender) view private {
+		//only the originator or taker can call this function
+		require(sender == game.originator.addr || sender == game.taker.addr);  
+	}
+
+	function getBetAmount() public view returns (uint) {
+		checkPermissions(msg.sender);
+		return game.betAmount;
+	}
 
 	function getOriginatorGuess() public view returns (uint) {
-	checkPermissions(msg.sender);
-	return game.originator.guess;
+		checkPermissions(msg.sender);
+		return game.originator.guess;
 	}
 
 	function getTakerGuess() public view returns (uint) {
-	checkPermissions(msg.sender);
-	return game.taker.guess;
+		checkPermissions(msg.sender);
+		return game.taker.guess;
 	}
 
 	function getPot() public view returns (uint256) {
-	checkPermissions(msg.sender);
-	return address(this).balance;
+		checkPermissions(msg.sender);
+		return address(this).balance;
 	}
 
-function generateBetOutcome() private {
-	//todo - not a great way to generate a random number but ok for now
-	game.outcome = uint(blockhash(block.number-1))%10 + 1;
-	game.status = STATUS_COMPLETE;
+	function generateBetOutcome() private {
+		//todo - not a great way to generate a random number but ok for now
+		game.outcome = uint(blockhash(block.number-1))%10 + 1;
+		game.status = STATUS_COMPLETE;
 
-	if (game.originator.guess == game.taker.guess) {
-		game.originator.status = STATUS_TIE;
-		game.taker.status = STATUS_TIE;
-	} else if (game.originator.guess > game.outcome && game.taker.guess > game.outcome) {
-		game.originator.status = STATUS_TIE;
-		game.taker.status = STATUS_TIE;
-	} else {
-		if ((game.outcome - game.originator.guess) < (game.outcome - game.taker.guess)) {
-			game.originator.status = STATUS_WIN;
-			game.taker.status = STATUS_LOSE;
-		} else if ((game.outcome - game.taker.guess) < (game.outcome - game.originator.guess)) {
-			game.originator.status = STATUS_LOSE;
-			game.taker.status = STATUS_WIN;
+		if (game.originator.guess == game.taker.guess) {
+			game.originator.status = STATUS_TIE;
+			game.taker.status = STATUS_TIE;
+		} else if (game.originator.guess > game.outcome && game.taker.guess > game.outcome) {
+			game.originator.status = STATUS_TIE;
+			game.taker.status = STATUS_TIE;
 		} else {
-			game.originator.status = STATUS_ERROR;
-			game.taker.status = STATUS_ERROR;
-			game.status = STATUS_ERROR;
+			if ((game.outcome - game.originator.guess) < (game.outcome - game.taker.guess)) {
+				game.originator.status = STATUS_WIN;
+				game.taker.status = STATUS_LOSE;
+			} else if ((game.outcome - game.taker.guess) < (game.outcome - game.originator.guess)) {
+				game.originator.status = STATUS_LOSE;
+				game.taker.status = STATUS_WIN;
+			} else {
+				game.originator.status = STATUS_ERROR;
+				game.taker.status = STATUS_ERROR;
+				game.status = STATUS_ERROR;
+			}
 		}
 	}
-}
 
 	//returns - [<description>, 'originator', <originator status>, 'taker', <taker status>]
 	function getBetOutcome() public view returns
 	(string memory description, string memory originatorKey, uint originatorStatus, string memory takerKey, uint takerStatus) 
-	{
+		{
 	if (game.originator.status == STATUS_TIE || game.taker.status == STATUS_TIE) {
 		description = "Both bets were the same or were over the number, the pot will be split";
 	} else {
@@ -134,9 +134,9 @@ function generateBetOutcome() private {
 			description = "Unknown Bet Outcome";
 		}
 	}
-	originatorKey = "originator";
-	originatorStatus = game.originator.status;
-	takerKey = "taker";
-	takerStatus = game.taker.status;
+		originatorKey = "originator";
+		originatorStatus = game.originator.status;
+		takerKey = "taker";
+		takerStatus = game.taker.status;
 	}
 }
